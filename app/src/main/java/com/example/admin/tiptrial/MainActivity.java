@@ -1,12 +1,19 @@
 package com.example.admin.tiptrial;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -18,11 +25,13 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 /*<div>Icons made by <a href="http://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a> is licensed by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a></div>*/
 public class MainActivity extends AppCompatActivity {
     private PreferenceManager prefManager;
     ImageView i1,i2;
+    LocationManager locationManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,20 +58,22 @@ public class MainActivity extends AppCompatActivity {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                int Permission_All = 1;
 
-                String[] Permissions = {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE};
-                if(!hasPermissions(MainActivity.this, Permissions)){
-                    ActivityCompat.requestPermissions(MainActivity.this, Permissions, Permission_All);
-                }
-                if (!prefManager.isFirstTimeLaunch()) {
-                    launchHomeScreen();
-                    finish();
-                }
-                else{
 
-                    launchNextScreen();
+                isConnectionAvailable();
+                isGpsAvailable();
+                if(isGpsAvailable() & isConnectionAvailable())
+                {
+                    if (!prefManager.isFirstTimeLaunch()) {
+                        launchHomeScreen();
+                        finish();
+                    }
+                    else{
+
+                        launchNextScreen();
+                    }
                 }
+
             }
         }, 1970);
 
@@ -125,5 +136,64 @@ public class MainActivity extends AppCompatActivity {
         }
         return true;
     }
+    private boolean isConnectionAvailable() {
+
+        boolean netCon = false;
+
+        try {
+
+            //Internet & network information "Object" initialization
+            ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+            //Internet enable & connectivity checking
+            if ("WIFI".equals(networkInfo.getTypeName()) || "MOBILE".equals(networkInfo.getTypeName()) && networkInfo != null && networkInfo.isAvailable() && networkInfo.isConnectedOrConnecting()) {
+                netCon = true;
+            }
+        } catch (Exception e) {
+            new AlertDialog.Builder(this)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setTitle("No Network Connection!")
+                    .setMessage("Please connect your device to either WiFi or switch on Mobile Data, operator charges may apply!")
+                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.cancel();
+                            finish();
+                        }
+                    }).show();
+        }
+        return netCon;
+    }
+
+    private boolean isGpsAvailable() {
+
+        boolean gpsCon = false;
+
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Toast.makeText(this, "GPS is Enabled.", Toast.LENGTH_SHORT).show();
+            gpsCon = true;
+        } else {
+            new AlertDialog.Builder(this)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setTitle("GPS is disabled!")
+                    .setMessage("Without GPS this application will not work! Would you like to enable the GPS?")
+                    .setCancelable(false)
+                    .setPositiveButton("Enable GPS", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            Intent callGpsSetting = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                            startActivity(callGpsSetting);
+                        }
+                    })
+                    .setNegativeButton("Exit.", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+                            dialog.cancel();
+                            finish();
+                        }
+                    })
+                    .show();
+        }
+        return gpsCon;
+    }
+
 
 }
