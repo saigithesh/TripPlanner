@@ -17,8 +17,12 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.directions.route.AbstractRouting;
-import com.directions.route.Routing;
+
+import com.akexorcist.googledirection.DirectionCallback;
+import com.akexorcist.googledirection.GoogleDirection;
+import com.akexorcist.googledirection.constant.AvoidType;
+import com.akexorcist.googledirection.constant.TransportMode;
+import com.akexorcist.googledirection.model.Direction;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -51,7 +55,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        /*LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);*/
         tv = (TextView)findViewById(R.id.textView2);
        /* if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
             Toast.makeText(this, "GPS is Enabled in your devide", Toast.LENGTH_SHORT).show();
@@ -61,8 +65,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             sendBroadcast(intent);
         }*/
 
-        /*mapfunction();*/
-        gps = new GPSTracker(MapsActivity.this);
+        mapfunction();
+       /* gps = new GPSTracker(MapsActivity.this);
 
         // check if GPS enabled
         if(gps.canGetLocation()){
@@ -77,40 +81,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // GPS or Network is not enabled
             // Ask user to enable GPS/network in settings
             gps.showSettingsAlert();
-        }
+        }*/
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
 
-   /* private void mapfunction() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
+   public void mapfunction() {
+       if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+               == PackageManager.PERMISSION_GRANTED) {
 
 
-            gpsTracker = new GPSTracker(getApplicationContext());
-            mLocation = gpsTracker.getLocation();
-            if(mLocation!=null){
-                double latitude = mLocation.getLatitude();
-                double longitude = mLocation.getLongitude();
-            }
+           gpsTracker = new GPSTracker(getApplicationContext());
+           mLocation = gpsTracker.getLocation();
 
+           latitude = mLocation.getLatitude();
+           longitude = mLocation.getLongitude();
+       }
 
-            // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-            SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                    .findFragmentById(R.id.map);
-            mapFragment.getMapAsync(this);
-        }
-
-    }*/
+       }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         LatLng my_loc = new LatLng(latitude, longitude);
-        mMap.addMarker(new MarkerOptions().position(my_loc).title("I'm here...").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-        /*mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));*/
-
+        from = mMap.addMarker(new MarkerOptions().position(my_loc).title("I'm here...").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(my_loc, 13));
         mMap.animateCamera(CameraUpdateFactory.zoomIn());
 
@@ -156,10 +151,10 @@ mMap.clear();
             search();
         }
         LatLng latLng1 = new LatLng(latitude2, longitude2);
-        LatLng my_loc = new LatLng(10, 0);
+        LatLng my_loc = new LatLng(latitude,longitude);
        /* LatLng my_loc = new LatLng(latitude, longitude);*/
-        Marker from = mMap.addMarker(new MarkerOptions().position(my_loc).title("I'm here...").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-        Marker to =   mMap.addMarker(new MarkerOptions().position(latLng1).title("marker1"));
+        from = mMap.addMarker(new MarkerOptions().position(my_loc).title("I'm here...").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+        to =   mMap.addMarker(new MarkerOptions().position(latLng1).title("marker1"));
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         builder.include(to.getPosition());
         builder.include(from.getPosition());
@@ -173,6 +168,7 @@ mMap.clear();
         mMap.animateCamera(cu);
         getDirection(my_loc,latLng1);
         continousrch();
+        Toast.makeText(MapsActivity.this, "end of search", Toast.LENGTH_SHORT).show();
     }
 }
 public void continousrch(){
@@ -181,20 +177,34 @@ public void continousrch(){
         @Override
         public void run() {
             search();
+            Toast.makeText(MapsActivity.this, "running search", Toast.LENGTH_SHORT).show();
             tv.setText(latitude+longitude+" ");
         }
     }, 5000);
 }
 public void getDirection(final LatLng a, final LatLng b){
-    Routing routing = new Routing.Builder()
-            .travelMode(Routing.TravelMode.DRIVING)
+    Toast.makeText(MapsActivity.this, "inside direction", Toast.LENGTH_SHORT).show();
+    GoogleDirection.withServerKey("AIzaSyAGRYhhtVz3LmzcmfB2KAKlPeWhANcT6LA")
+            .from(a)
+            .to(b)
+            .avoid(AvoidType.FERRIES)
+            .transportMode(TransportMode.DRIVING)
+            .execute(new DirectionCallback() {
+                @Override
+                public void onDirectionSuccess(Direction direction, String rawBody) {
+                    if(direction.isOK()) {
+                        // Do something
+                    } else {
+                        // Do something
+                    }
+                }
 
-            .waypoints(a,b)
-            .key("AIzaSyAGRYhhtVz3LmzcmfB2KAKlPeWhANcT6LA")
-            .alternativeRoutes(true)
-            .build();
+                @Override
+                public void onDirectionFailure(Throwable t) {
+                    getDirection(a,b);
+                }
+            });
 
-    routing.execute();
 }
 
 }
